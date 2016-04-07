@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"crypto/rand"
+	"encoding/base64"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -20,10 +22,16 @@ var (
 	}
 
 	tickBuffer []int
+	sessions map[string]*session
 )
 
 type Tick struct {
-	Count int
+	Count int `json:"count"`
+}
+
+type session struct {
+	Id string `json:"id"`
+	index int
 }
 
 func startServer(port string) {
@@ -42,7 +50,12 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	fmt.Println("New websocket connection opened")
+	sess := session{Id: generateId()}
+	sessions[sess.Id] = &sess
+
+	fmt.Println("New websocket connection opened with id", sess.Id)
+
+	conn.WriteJSON(sess)
 
 	var counter int
 	ticker := time.NewTicker(200 * time.Millisecond)
@@ -73,6 +86,16 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func generateId() string {
+	data := make([]byte, 12)
+	_, err := rand.Read(data)
+	if err != nil {
+		panic(err)
+	}
+
+	return base64.StdEncoding.EncodeToString(data)
+}
+
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -84,6 +107,9 @@ func main() {
 		tickBuffer[i] = i
 	}
 
+	sessions = make(map[string]*session)
+
 	fmt.Println("Starting server on port", port)
 	startServer(port)
 }
+

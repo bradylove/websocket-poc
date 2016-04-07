@@ -23,8 +23,9 @@ var Client = function(streamId) {
     },
 
     onmessage: function(event) {
-      console.log("message")
-      console.log(event.data)
+      var data = JSON.parse(event.data)
+
+      $("#messages").append("" + data.count + "\n")
     }
   }
 }
