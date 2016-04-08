@@ -1,12 +1,12 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"
 	"time"
-	"crypto/rand"
-	"encoding/base64"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -22,7 +22,7 @@ var (
 	}
 
 	tickBuffer []int
-	sessions map[string]*session
+	sessions   map[string]*session
 )
 
 type Tick struct {
@@ -30,13 +30,14 @@ type Tick struct {
 }
 
 type session struct {
-	Id string `json:"id"`
+	Id    string `json:"id"`
 	index int
 }
 
 func startServer(port string) {
 	r := mux.NewRouter()
-	r.HandleFunc("/stream/{streamId}", wsHandler)
+	r.HandleFunc("/stream/", wsHandler).Methods("GET")
+	r.HandleFunc("/stream/{sessionId}", wsHandler).Methods("GET")
 
 	http.Handle("/", r)
 	fmt.Println(http.ListenAndServe(fmt.Sprintf(":%s", port), nil))
@@ -50,27 +51,48 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	sess := session{Id: generateId()}
-	sessions[sess.Id] = &sess
+	vars := mux.Vars(r)
+	sessionId := vars["sessionId"]
+	isNewStream := sessionId == ""
 
-	fmt.Println("New websocket connection opened with id", sess.Id)
+	var sess *session
+	if isNewStream {
+		sess = &session{Id: generateId()}
+		sessions[sess.Id] = sess
+		conn.WriteJSON(sess)
+		fmt.Println("New websocket connection opened with id", sess.Id)
+	}
 
-	conn.WriteJSON(sess)
+	if !isNewStream {
+		var ok bool
+		sess, ok = sessions[sessionId]
+		if !ok {
+			fmt.Println("Invalid session id:", sess.Id)
+			defer conn.Close()
+			return
+		}
+		fmt.Println("Resuming websocket stream with id:", sess.Id)
+	}
 
-	var counter int
-	ticker := time.NewTicker(200 * time.Millisecond)
 	go func() {
+		ticker := time.NewTicker(200 * time.Millisecond)
 		for _ = range ticker.C {
-			err := conn.WriteJSON(Tick{Count: counter})
+			if sess.index == 100 {
+				conn.Close()
+				return
+			}
+
+			count := tickBuffer[sess.index]
+			err := conn.WriteJSON(Tick{Count: count})
 			if err != nil {
 				fmt.Println(err)
 				ticker.Stop()
 				return
 			}
 
-			fmt.Println("Wrote json message with count:", counter)
+			fmt.Println("Wrote json message with count:", count)
 
-			counter++
+			sess.index++
 		}
 	}()
 
@@ -112,4 +134,3 @@ func main() {
 	fmt.Println("Starting server on port", port)
 	startServer(port)
 }
-
