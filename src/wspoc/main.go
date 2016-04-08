@@ -67,7 +67,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		var ok bool
 		sess, ok = sessions[sessionId]
 		if !ok {
-			fmt.Println("Invalid session id:", sess.Id)
+			fmt.Println("Invalid session id:", sessionId)
 			defer conn.Close()
 			return
 		}
@@ -77,7 +77,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		ticker := time.NewTicker(200 * time.Millisecond)
 		for _ = range ticker.C {
-			if sess.index == 100 {
+			if sess.index == 50 && isNewStream {
 				conn.Close()
 				return
 			}

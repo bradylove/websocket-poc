@@ -1,4 +1,6 @@
-var wsHost = "ws://localhost:9292/stream/"
+var wsHost = "wss://wspoc.cfapps.io:4443/stream/"
+// var wsHost = "ws://localhost:9292/stream/"
+var streamId = ""
 
 $(document).ready(function() {
   client = new Client();
@@ -6,20 +8,17 @@ $(document).ready(function() {
   client.connect()
 })
 
-var Client = function(streamId) {
-  if (streamId == undefined) {
-    streamId = "";
-  }
-
+var Client = function() {
   return {
-    streamId: streamId,
     conn: null,
 
     connect: function() {
-      this.conn = new WebSocket(wsHost + this.streamId)
+      this.conn = new WebSocket(wsHost + streamId)
       this.conn.onmessage = this.onmessage
       this.conn.error = this.onerror
-      this.conn.onclose = function() {
+      this.conn.onclose = function(event) {
+        console.log(event)
+
         setTimeout(function() {
           console.log("Reconnecting...")
           this.connect()
@@ -39,7 +38,7 @@ var Client = function(streamId) {
       var data = JSON.parse(event.data)
 
       if (data.id != null) {
-        this.streamId = data.id
+        streamId = data.id
         console.log("StreamID:" + this.streamId)
 
         return
