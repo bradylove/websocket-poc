@@ -7,3 +7,6 @@
 [submodule "src/github.com/gorilla/context"]
 	path = src/github.com/gorilla/context
 	url = git@github.com:gorilla/context.git
+[submodule "src/github.com/elazarl/goproxy"]
+	path = src/github.com/elazarl/goproxy
+	url = git@github.com:elazarl/goproxy.git

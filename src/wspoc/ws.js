@@ -45,6 +45,7 @@ var Client = function() {
       }
 
       $("#messages").append("" + data.count + "\n")
+      window.scrollTo(0,document.body.scrollHeight);
     }
   }
 }
